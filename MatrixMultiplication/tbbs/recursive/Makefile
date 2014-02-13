@@ -1,12 +1,12 @@
 CC=g++
-CFLAGS=-O3 -fopenmp -Wall -g
+CFLAGS=-O3 -fopenmp -Wall -g -std=c++0x
 LIBS= -ltbb -lrt
-OBJFILES=util.o mm_recursive.o
+OBJFILES=util.o task_group.o
 
 all: task_group
 
-task_group: mm_recursive.o util.o
-	$(CC) $(CFLAGS) $(LIBS) -o task_group $(OBJFILES) 
+task_group: task_group.o util.o
+	$(CC)  $(OBJFILES) -o task_group $(LIBS)
 
 %.o: %.cpp
 	$(CC) $(CFLAGS) -c $< 

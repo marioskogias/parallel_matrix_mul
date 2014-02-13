@@ -1,4 +1,3 @@
-
 /*
  * mm_recursive.c
  *
@@ -33,6 +32,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/time.h>
+
+#include <tbb/task.h>
+#include <tbb/task_group.h>
+#include <tbb/task_scheduler_init.h>
+#include <tbb/tick_count.h>
 #include "util.h"
 
 
@@ -99,18 +103,19 @@ void RecMult(int n, matrix a, matrix b, matrix c)
     else {
         d=newmatrix(n);
         n /= 2;
-        RecMult(n, a11, b11, d11);
-        RecMult(n, a12, b21, c11);
-        RecAdd(n, d11, c11, c11);
-        RecMult(n, a11, b12, d12);
-        RecMult(n, a12, b22, c12);
-        RecAdd(n, d12, c12, c12);
-        RecMult(n, a21, b11, d21);
-        RecMult(n, a22, b21, c21);
-        RecAdd(n, d21, c21, c21);
-        RecMult(n, a21, b12, d22);
-        RecMult(n, a22, b22, c22);
-        RecAdd(n, d22, c22, c22);
+        tbb::task_group g;
+        g.run( [&]{ RecMult(n, a11, b11, d11); });
+        g.run( [&]{ RecMult(n, a12, b21, c11); });
+        g.run( [&]{ RecAdd(n, d11, c11, c11); });
+        g.run( [&]{ RecMult(n, a11, b12, d12); });
+        g.run( [&]{ RecMult(n, a12, b22, c12); });
+        g.run( [&]{ RecAdd(n, d12, c12, c12); });
+        g.run( [&]{ RecMult(n, a21, b11, d21); });
+        g.run( [&]{ RecMult(n, a22, b21, c21); });
+        g.run( [&]{ RecAdd(n, d21, c21, c21); });
+        g.run( [&]{ RecMult(n, a21, b12, d22); });
+        g.run( [&]{ RecMult(n, a22, b22, c22); });
+        g.run( [&]{ RecAdd(n, d22, c22, c22); });
         freematrix(d,n*2);
     }
 }
