@@ -1,0 +1,2 @@
+TBB_DIR = /home/users/anastop/tbb/tbb_latest/
+LIBRARY_VER = $(shell cat /home/users/anastop/tbb/TBB_LATEST_LIBRARY_VER.txt)
