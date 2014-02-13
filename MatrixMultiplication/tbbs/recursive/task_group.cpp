@@ -104,18 +104,25 @@ void RecMult(int n, matrix a, matrix b, matrix c)
         d=newmatrix(n);
         n /= 2;
         tbb::task_group g;
+
+        /*First do all the mutliplications*/
         g.run( [&]{ RecMult(n, a11, b11, d11); });
         g.run( [&]{ RecMult(n, a12, b21, c11); });
-        g.run( [&]{ RecAdd(n, d11, c11, c11); });
         g.run( [&]{ RecMult(n, a11, b12, d12); });
         g.run( [&]{ RecMult(n, a12, b22, c12); });
-        g.run( [&]{ RecAdd(n, d12, c12, c12); });
         g.run( [&]{ RecMult(n, a21, b11, d21); });
-        g.run( [&]{ RecMult(n, a22, b21, c21); });
-        g.run( [&]{ RecAdd(n, d21, c21, c21); });
+        g.run( [&]{ RecMult(n, a22, b21, c21); }); 
         g.run( [&]{ RecMult(n, a21, b12, d22); });
         g.run( [&]{ RecMult(n, a22, b22, c22); });
+        g.wait();
+    
+        /*Then all the additions*/
+        g.run( [&]{ RecAdd(n, d11, c11, c11); });
+        g.run( [&]{ RecAdd(n, d12, c12, c12); });
+        g.run( [&]{ RecAdd(n, d21, c21, c21); });
         g.run( [&]{ RecAdd(n, d22, c22, c22); });
+        g.wait();
+        
         freematrix(d,n*2);
     }
 }
@@ -131,9 +138,11 @@ void RecAdd(int n, matrix a, matrix b, matrix c) {
     } 
     else {
         n /= 2;
-        RecAdd(n, a11, b11, c11);
-        RecAdd(n, a12, b12, c12);
-        RecAdd(n, a21, b21, c21);
-        RecAdd(n, a22, b22, c22);
+        tbb::task_group g;
+        g.run( [&]{ RecAdd(n, a11, b11, c11); });
+        g.run( [&]{ RecAdd(n, a12, b12, c12); });
+        g.run( [&]{ RecAdd(n, a21, b21, c21); });
+        g.run( [&]{ RecAdd(n, a22, b22, c22); });
+        g.wait();
     }
 }
