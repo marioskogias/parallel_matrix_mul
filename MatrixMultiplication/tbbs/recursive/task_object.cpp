@@ -33,6 +33,7 @@
 #include <stdlib.h>
 #include <sys/time.h>
 
+
 #include <tbb/task.h>
 #include <tbb/task_group.h>
 #include <tbb/task_scheduler_init.h>
@@ -44,34 +45,61 @@ int block;
 
 
 class MulTask: public tbb::task {
-    
-    int n;
-    matrix a, b, c;
+   
+    public: 
+        int n;
+        matrix a, b, c;
 
-    MulTask(int n_, matrix a_, matrix b_, matrix c_) {
-        n = n_;
-        a = a_;
-        b = b_;
-        c = c_;
-    }
-
-    task* execute() {
-        if (n <= block) {
-            double sum, **p = a->d, **q = b->d, **r = c->d;
-            int i, j, k;
-
-            for (i = 0; i < n; i++) {
-                for (j = 0; j < n; j++) {
-                    for (sum = 0., k = 0; k < n; k++)
-                        sum += p[i][k] * q[k][j];
-                    r[i][j] = sum;
-                }
-            }
-        } 
-        else {
-            /*parallel implementation*/    
+        MulTask(int n_, matrix a_, matrix b_, matrix c_) {
+            n = n_;
+            a = a_;
+            b = b_;
+            c = c_;
         }
-    }
+
+        task* execute() {
+            
+            matrix d;
+            if (n <= block) {
+                double sum, **p = a->d, **q = b->d, **r = c->d;
+                int i, j, k;
+
+                for (i = 0; i < n; i++) {
+                    for (j = 0; j < n; j++) {
+                        for (sum = 0., k = 0; k < n; k++)
+                            sum += p[i][k] * q[k][j];
+                        r[i][j] = sum;
+                    }
+                }
+            } 
+            else {
+                d = newmatrix(n);
+                n /= 2;
+                
+                MulTask& t1 = *new( tbb::task::allocate_child() ) MulTask(n, a11, b11, d11);
+                MulTask& t2 = *new (allocate_child()) MulTask(n, a12, b21, c11);
+                MulTask& t3 = *new (allocate_child()) MulTask(n, a11, b12, d12);
+                MulTask& t4 = *new (allocate_child()) MulTask(n, a12, b22, c12);
+                MulTask& t5 = *new (allocate_child()) MulTask(n, a21, b11, d21);
+                MulTask& t6= *new (allocate_child()) MulTask(n, a22, b21, c21); 
+                MulTask& t7 = *new (allocate_child()) MulTask(n, a21, b12, d22);
+                MulTask& t8 = *new (allocate_child()) MulTask(n, a22, b22, c22);
+                
+                set_ref_count(9);
+
+                tbb::task::spawn(t1);
+                tbb::task::spawn(t2);
+                tbb::task::spawn(t3);
+                tbb::task::spawn(t4);
+                tbb::task::spawn(t5);
+                tbb::task::spawn(t6);
+                tbb::task::spawn(t7);
+                tbb::task::spawn(t8);
+                
+                tbb::task::wait_for_all();
+            }
+            return NULL;
+        }
 };
 
 class AddTask: public tbb::task {
@@ -82,12 +110,13 @@ int main(int argc, char **argv) {
 
     struct timeval ts,tf;
     double tt;
-    int n;
+    int n, nthreads;
     matrix a, b, c;
 
-    check(argc >= 3, "main: Need matrix size and block size on command line");
+    check(argc >= 3, "main: Need matrix size, block size and thread no on command line");
     n = atoi(argv[1]);
     block=atoi(argv[2]);
+    nthreads=atoi(argv[3]);
 
     a = newmatrix(n);
     b = newmatrix(n);
@@ -96,10 +125,11 @@ int main(int argc, char **argv) {
     randomfill(n, b);
 
     gettimeofday(&ts,NULL);
-
-    /*
-     * Implement HERE
-     */
+    
+    tbb::task_scheduler_init init(nthreads);
+    
+    MulTask &r = *new(tbb::task::allocate_root()) MulTask(n, a, b, c);
+    tbb::task::spawn_root_and_wait(r);
     
     gettimeofday(&tf,NULL);
     tt=(tf.tv_sec-ts.tv_sec)+(tf.tv_usec-ts.tv_usec)*0.000001;
