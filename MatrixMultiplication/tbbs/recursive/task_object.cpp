@@ -44,7 +44,34 @@ int block;
 
 
 class MulTask: public tbb::task {
+    
+    int n;
+    matrix a, b, c;
 
+    MulTask(int n_, matrix a_, matrix b_, matrix c_) {
+        n = n_;
+        a = a_;
+        b = b_;
+        c = c_;
+    }
+
+    task* execute() {
+        if (n <= block) {
+            double sum, **p = a->d, **q = b->d, **r = c->d;
+            int i, j, k;
+
+            for (i = 0; i < n; i++) {
+                for (j = 0; j < n; j++) {
+                    for (sum = 0., k = 0; k < n; k++)
+                        sum += p[i][k] * q[k][j];
+                    r[i][j] = sum;
+                }
+            }
+        } 
+        else {
+            /*parallel implementation*/    
+        }
+    }
 };
 
 class AddTask: public tbb::task {
