@@ -43,6 +43,45 @@
 
 int block;
 
+class AddTask: public tbb::task {
+    public: 
+        int n;
+        matrix a, b, c;
+
+        AddTask(int n_, matrix a_, matrix b_, matrix c_) {
+            n = n_;
+            a = a_;
+            b = b_;
+            c = c_;
+        }
+    
+        task* execute() {
+            if (n <= block) {
+                double **p = a->d, **q = b->d, **r = c->d;
+                int i, j;
+                for (i = 0; i < n; i++) 
+                    for (j = 0; j < n; j++) 
+                        r[i][j] = p[i][j] + q[i][j];
+            } 
+            else {
+                n /= 2;
+                AddTask& t1 = *new( tbb::task::allocate_child() ) AddTask(n, a11, b11, c11);
+                AddTask& t2 = *new( tbb::task::allocate_child() ) AddTask(n, a12, b12, c12);
+                AddTask& t3 = *new( tbb::task::allocate_child() ) AddTask(n, a21, b21, c21);
+                AddTask& t4 = *new( tbb::task::allocate_child() ) AddTask(n, a22, b22, c22);
+                
+                set_ref_count(5);
+
+                tbb::task::spawn(t1);
+                tbb::task::spawn(t2);
+                tbb::task::spawn(t3);
+                tbb::task::spawn(t4);
+                
+                tbb::task::wait_for_all();
+            }
+            return NULL;
+        }
+};
 
 class MulTask: public tbb::task {
    
@@ -97,14 +136,26 @@ class MulTask: public tbb::task {
                 tbb::task::spawn(t8);
                 
                 tbb::task::wait_for_all();
+        
+                AddTask& t9 = *new( tbb::task::allocate_child() ) AddTask(n, d11, c11, c11);
+                AddTask& t10 = *new( tbb::task::allocate_child() ) AddTask(n, d12, c12, c12);
+                AddTask& t11 = *new( tbb::task::allocate_child() ) AddTask(n, d21, c21, c21);
+                AddTask& t12 = *new( tbb::task::allocate_child() ) AddTask(n, d22, c22, c22);
+
+                set_ref_count(5);
+
+                tbb::task::spawn(t9);
+                tbb::task::spawn(t10);
+                tbb::task::spawn(t11);
+                tbb::task::spawn(t12);
+                
+                tbb::task::wait_for_all();
+
             }
             return NULL;
         }
 };
 
-class AddTask: public tbb::task {
-
-};
 
 int main(int argc, char **argv) {
 
@@ -125,7 +176,7 @@ int main(int argc, char **argv) {
     randomfill(n, b);
 
     gettimeofday(&ts,NULL);
-    
+   
     tbb::task_scheduler_init init(nthreads);
     
     MulTask &r = *new(tbb::task::allocate_root()) MulTask(n, a, b, c);
