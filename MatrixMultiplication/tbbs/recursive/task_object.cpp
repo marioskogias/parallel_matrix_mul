@@ -34,10 +34,10 @@
 #include <sys/time.h>
 
 
-#include <tbb/task.h>
-#include <tbb/task_group.h>
-#include <tbb/task_scheduler_init.h>
-#include <tbb/tick_count.h>
+#include "tbb/task.h"
+#include "tbb/task_group.h"
+#include "tbb/task_scheduler_init.h"
+#include "tbb/tick_count.h"
 #include "util.h"
 
 
