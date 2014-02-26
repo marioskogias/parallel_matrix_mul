@@ -4,7 +4,8 @@
 
 #include "util.h"
 
-extern int block;
+#define block 64
+//extern int block;
 /* Recursive randomfill -- possibly useful for NUMA archs*/
 /* Fill the matrix a with random values between 0 and 1 */
 /*

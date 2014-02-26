@@ -32,6 +32,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/time.h>
+#include <emmintrin.h> 
 
 #include "tbb/task.h"
 #include "tbb/task_group.h"
@@ -39,8 +40,10 @@
 #include "tbb/tick_count.h"
 #include "util.h"
 
-
-int block;
+#define SM (CLS / sizeof (double))
+#define N 64
+#define block N 
+//int block;
 
 void RecMult(int n, matrix a, matrix b, matrix c);
 void RecAdd(int n, matrix a, matrix b, matrix c);
@@ -49,12 +52,13 @@ int main(int argc, char **argv) {
 
     struct timeval ts,tf;
     double tt;
-    int n;
+    int n, nthreads;
     matrix a, b, c;
 
     check(argc >= 3, "main: Need matrix size and block size on command line");
     n = atoi(argv[1]);
-    block=atoi(argv[2]);
+    //block=atoi(argv[2]);
+    nthreads=atoi(argv[3]);
 
     a = newmatrix(n);
     b = newmatrix(n);
@@ -62,6 +66,8 @@ int main(int argc, char **argv) {
     randomfill(n, a);
     randomfill(n, b);
 
+    tbb::task_scheduler_init init(nthreads);
+    
     gettimeofday(&ts,NULL);
     RecMult(n, a, b, c);	/* strassen algorithm */
     gettimeofday(&tf,NULL);
@@ -89,18 +95,41 @@ void RecMult(int n, matrix a, matrix b, matrix c)
     matrix d;
 
     if (n <= block) {
-        double sum, **p = a->d, **q = b->d, **r = c->d;
-        int i, j, k;
+        double sum, **mul1 = a->d, **mul2 = b->d, **res = c->d;
+       // int i, j, k;
 
-        for (i = 0; i < n; i++) {
-            for (j = 0; j < n; j++) {
-                for (sum = 0., k = 0; k < n; k++)
-                    sum += p[i][k] * q[k][j];
-                r[i][j] = sum;
-            }
-        }
-    } 
-    else {
+        int i, i2, j, j2, k, k2;
+        double *__restrict__ rres;
+        double *__restrict__ rmul1;
+        double *__restrict__ rmul2;
+        //for (i = 0; i < N; i += SM)
+        for (i = 0; i < N; i++)
+            for (j = 0; j < N; j += SM)
+                for (k = 0; k < N; k += SM)
+                    for (i2 = 0, rres = &res[i][j], rmul1 = &mul1[i][k]; i2 < SM;
+                            ++i2, rres += N, rmul1 += N)
+                    {
+                        _mm_prefetch (&rmul1[8], _MM_HINT_NTA);
+                        for (k2 = 0, rmul2 = &mul2[k][j]; k2 < SM; ++k2, rmul2 += N)
+                        {
+                            __m128d m1d = _mm_load_sd (&rmul1[k2]);
+                            m1d = _mm_unpacklo_pd (m1d, m1d);
+                            for (j2 = 0; j2 < SM; j2 += 2)
+                            {
+                                __m128d m2 = _mm_load_pd (&rmul2[j2]);
+                                __m128d r2 = _mm_load_pd (&rres[j2]);
+                                _mm_store_pd (&rres[j2],_mm_add_pd (_mm_mul_pd (m2, m1d), r2));
+                                /*for (i = 0; i < n; i++) {
+                                  for (j = 0; j < n; j++) {
+                                  for (sum = 0., k = 0; k < n; k++)
+                                  sum += p[i][k] * q[k][j];
+                                  r[i][j] = sum;
+                                  }
+                                  }*/
+                            }
+                        } 
+                    }
+    } else {
         d=newmatrix(n);
         n /= 2;
         tbb::task_group g;
