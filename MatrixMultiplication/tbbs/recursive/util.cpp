@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/time.h>
+#include <malloc.h>
+#include <string.h>
 
 #include "util.h"
 
@@ -54,6 +56,12 @@ void auxrandomfill(int n, matrix a, int i, int j) {
         auxrandomfill(n/2,a->p[(i>=n/2)*2+(j>=n/2)],i%(n/2),j%(n/2));
 }
 
+void * my_calloc(size_t size) {
+    void * memory = memalign(64, size);
+    memset(memory, 0, size);
+    return memory;
+}
+
 /* return new square n by n matrix */
 matrix newmatrix(int n) {
 
@@ -66,7 +74,8 @@ matrix newmatrix(int n) {
         check(a->d != NULL,
                 "newmatrix: out of space for row pointers");
         for (i = 0; i < n; i++) {
-            a->d[i] = (double *)calloc(n, sizeof(double));
+            //a->d[i] = (double *)calloc(n, sizeof(double));
+            a->d[i] = (double *)my_calloc(n*sizeof(double));
             check(a != NULL, "newmatrix: out of space for rows");
         }
     } 
@@ -84,6 +93,7 @@ matrix newmatrix(int n) {
 
 /* free square n by n matrix m */
 void freematrix (matrix m, int n) {
+    printf("in free matrix\n");
     if (n<=block) {
         int i;
         for (i=0;i<n;i++)
