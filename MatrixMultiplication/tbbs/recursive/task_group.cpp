@@ -114,6 +114,7 @@ void RecMult(int n, matrix a, matrix b, matrix c)
                     {
                         _mm_prefetch (&rmul1[8], _MM_HINT_NTA);
                         printf("3\n");
+                        printf("k=%d j=%d\n", k,j);
                         for (k2 = 0, rmul2 = &mul2[k][j]; k2 < SM; ++k2, rmul2 += N)
                         {
                             
@@ -124,8 +125,11 @@ void RecMult(int n, matrix a, matrix b, matrix c)
                             {
                                 printf("5\n");
                                 __m128d m2 = _mm_load_pd (&rmul2[j2]);
+                                printf("j2 = %d\n", j2);
                                 __m128d r2 = _mm_load_pd (&rres[j2]);
+                                printf("j2 = %d\n", j2);
                                 _mm_store_pd (&rres[j2],_mm_add_pd (_mm_mul_pd (m2, m1d), r2));
+                                printf("store\n");
                                 /*for (i = 0; i < n; i++) {
                                   for (j = 0; j < n; j++) {
                                   for (sum = 0., k = 0; k < n; k++)
