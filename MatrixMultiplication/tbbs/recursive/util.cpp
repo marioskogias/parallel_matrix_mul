@@ -4,6 +4,7 @@
 #include <malloc.h>
 #include <string.h>
 
+#include "tbb/cache_aligned_allocator.h"
 #include "util.h"
 
 #define block 64
@@ -56,9 +57,10 @@ void auxrandomfill(int n, matrix a, int i, int j) {
         auxrandomfill(n/2,a->p[(i>=n/2)*2+(j>=n/2)],i%(n/2),j%(n/2));
 }
 
-void * my_calloc(size_t size) {
-    void * memory = memalign(64, size);
-    memset(memory, 0, size);
+void * my_calloc(size_t count) {
+    //void * memory = memalign(64, size);
+    void * memory = tbb::cache_aligned_allocator<double>().allocate(count);
+    memset(memory, 0, count*sizeof(double));
     return memory;
 }
 
@@ -93,11 +95,11 @@ matrix newmatrix(int n) {
 
 /* free square n by n matrix m */
 void freematrix (matrix m, int n) {
-    printf("in free matrix\n");
     if (n<=block) {
         int i;
         for (i=0;i<n;i++)
-            free(m->d[i]);
+            //free(m->d[i]);
+            tbb::cache_aligned_allocator<double>().deallocate(m->d[i], block);    
         free(m->d);
     }
     else {

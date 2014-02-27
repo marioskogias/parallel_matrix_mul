@@ -65,9 +65,7 @@ int main(int argc, char **argv) {
     c = newmatrix(n);
     randomfill(n, a);
     randomfill(n, b);
-    printf("before scheduler\n");
     tbb::task_scheduler_init init(nthreads);
-    printf("after the scheduler\n");    
     gettimeofday(&ts,NULL);
     RecMult(n, a, b, c);	/* strassen algorithm */
     gettimeofday(&tf,NULL);
@@ -92,19 +90,16 @@ int main(int argc, char **argv) {
 void RecMult(int n, matrix a, matrix b, matrix c)
 {
 
-    printf("mult\n");
     matrix d;
 
     if (n <= block) {
         double sum, **mul1 = a->d, **mul2 = b->d, **res = c->d;
        // int i, j, k;
 
-        printf("1\n");
         int i, i2, j, j2, k, k2;
         double *__restrict__ rres;
         double *__restrict__ rmul1;
         double *__restrict__ rmul2;
-        printf("2\n");
         //for (i = 0; i < N; i += SM)
         for (i = 0; i < N; i++)
             for (j = 0; j < N; j += SM)
@@ -113,23 +108,16 @@ void RecMult(int n, matrix a, matrix b, matrix c)
                             ++i2, rres += N, rmul1 += N)
                     {
                         _mm_prefetch (&rmul1[8], _MM_HINT_NTA);
-                        printf("3\n");
-                        printf("k=%d j=%d\n", k,j);
                         for (k2 = 0, rmul2 = &mul2[k][j]; k2 < SM; ++k2, rmul2 += N)
                         {
                             
-                            printf("4\n");
                             __m128d m1d = _mm_load_sd (&rmul1[k2]);
                             m1d = _mm_unpacklo_pd (m1d, m1d);
                             for (j2 = 0; j2 < SM; j2 += 2)
                             {
-                                printf("5\n");
                                 __m128d m2 = _mm_load_pd (&rmul2[j2]);
-                                printf("j2 = %d\n", j2);
                                 __m128d r2 = _mm_load_pd (&rres[j2]);
-                                printf("j2 = %d\n", j2);
                                 _mm_store_pd (&rres[j2],_mm_add_pd (_mm_mul_pd (m2, m1d), r2));
-                                printf("store\n");
                                 /*for (i = 0; i < n; i++) {
                                   for (j = 0; j < n; j++) {
                                   for (sum = 0., k = 0; k < n; k++)
@@ -140,7 +128,6 @@ void RecMult(int n, matrix a, matrix b, matrix c)
                             }
                         } 
                     }
-        printf("end 1\n");
     } else {
         d=newmatrix(n);
         n /= 2;
@@ -155,9 +142,7 @@ void RecMult(int n, matrix a, matrix b, matrix c)
         g.run( [&]{ RecMult(n, a22, b21, c21); }); 
         g.run( [&]{ RecMult(n, a21, b12, d22); });
         g.run( [&]{ RecMult(n, a22, b22, c22); });
-        printf("in rect mul before wait\n"); 
         g.wait();
-        printf("in rect mul wait before add\n"); 
         /*Then all the additions*/
         g.run( [&]{ RecAdd(n, d11, c11, c11); });
         g.run( [&]{ RecAdd(n, d12, c12, c12); });
@@ -171,7 +156,6 @@ void RecMult(int n, matrix a, matrix b, matrix c)
 
 /* c = a+b */
 void RecAdd(int n, matrix a, matrix b, matrix c) {
-    printf("read add\n");
     if (n <= block) {
         double **p = a->d, **q = b->d, **r = c->d;
         int i, j;

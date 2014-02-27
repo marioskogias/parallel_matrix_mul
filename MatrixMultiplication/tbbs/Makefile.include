@@ -1,2 +1,2 @@
-TBB_DIR = /home/user/tbb/tbb_latest/
+TBB_DIR = /home/user/tbb/tbb_latest
 LIBRARY_VER = $(shell cat /home/user/tbb/TBB_LATEST_LIBRARY_VER.txt)
